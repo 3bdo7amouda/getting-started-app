@@ -1,0 +1,38 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: getting-started:ci
+
+      - name: Run container
+        run: docker run -d -p 3000:3000 --name test-app getting-started:ci
+
+      - name: Wait for app to be ready
+        run: |
+          for i in $(seq 1 10); do
+            curl --fail http://localhost:3000 && break
+            echo "Waiting for app to start... ($i/10)"
+            sleep 2
+          done
+
+      - name: Test the app responds
+        run: curl --fail http://localhost:3000
+
+      - name: Clean up container
+        if: always()
+        run: docker rm -f test-app
